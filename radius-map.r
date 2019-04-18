@@ -1,53 +1,39 @@
 #!/usr/bin/Rscript
 
-## R code - original version used SimpleITK
-## 3d version below is using oro.nifti to load the test data.
-
-## Clone of the matlab region fill operation that uses big sparse matrices
-# library(SimpleITK)
-library(oro.nifti)
+library(SimpleITK)
 library(Matrix)
-regionfill <- function(im, regmask)
-{
-  im <- Mask(im, !regmask)
-  imA <- as.array(im)
-  regmask <- as.array(regmask)
-  storage.mode(regmask)<-"logical"
-  vv <- nrow(imA)*ncol(imA)
-  ll <- Matrix(0, nrow=vv, ncol=vv)
-
-  maskpix <- which(regmask)
-  nonmaskpix <- which(!regmask)
-  ll[cbind(maskpix, maskpix)] <- 1
-  ll[cbind(nonmaskpix,nonmaskpix)] <- 1
-  ## Need to deal with edge effects
-  ll[cbind(maskpix, maskpix+1)] <- -0.25
-  ll[cbind(maskpix, maskpix-1)] <- -0.25
-  ll[cbind(maskpix, maskpix+nrow(imA))] <- -0.25
-  ll[cbind(maskpix, maskpix-nrow(imA))] <- -0.25
-  b <- as.vector(imA)
-  g<-solve(ll, b)
-  dim(g) <- dim(imA)
-  g <- as.image(as.matrix(g))
-  g$CopyInformation(im)
-  return(g)
-}
 
 regionfill3D <- function(im, regmask)
 {
-    result <- im
-  #im <- Mask(im, !regmask)
   imA <- as.array(im)
   regmask <- as.array(regmask)
   storage.mode(regmask)<-"logical"
-  vv <- prod(dim(imA))
-  ll <- Matrix(0, nrow=vv, ncol=vv)
-
-  maskpix <- which(regmask)
+  imdims <- dim(imA)
+  vv <- prod(imdims)
+  ll <- Matrix(0, nrow=vv, ncol=vv, sparse=TRUE)
+  
+  allmaskpix <- which(regmask)
   nonmaskpix <- which(!regmask)
+
+  maskpixcoords <- arrayInd(allmaskpix, .dim=dim(regmask))
+
+  edgepix <- (maskpixcoords[,1] == 1) +
+      (maskpixcoords[,2] == 1) +
+      (maskpixcoords[,3] == 1) +
+      (maskpixcoords[,1] == imdims[1]) +
+      (maskpixcoords[,2] == imdims[2]) +
+      (maskpixcoords[,3] == imdims[3]) 
+
+  maskpix <- allmaskpix[edgepix==0]
+
+  maskpixedge <- allmaskpix[edgepix > 0]
+  maskpixedgecoords <- maskpixcoords[edgepix > 0, ]
+
+  rm(maskpixcoords)
+  rm(allmaskpix)
   ll[cbind(maskpix, maskpix)] <- 1
   ll[cbind(nonmaskpix,nonmaskpix)] <- 1
-  ## Need to deal with edge effects - ignore for now
+  ## set up the ones that aren't edges
   ll[cbind(maskpix, maskpix+1)] <- -1/6
   ll[cbind(maskpix, maskpix-1)] <- -1/6
   ll[cbind(maskpix, maskpix+nrow(imA))] <- -1/6
@@ -55,56 +41,73 @@ regionfill3D <- function(im, regmask)
   ll[cbind(maskpix, maskpix+(nrow(imA)*ncol(imA)))] <- -1/6
   ll[cbind(maskpix, maskpix-(nrow(imA)*ncol(imA)))] <- -1/6
 
+  ## deal with the edge effects
+  ## can be dealing with up to 3 missing neighbours (for a corner).
+  ## is there a nice vectorized way to do this
+  ll[cbind(maskpixedge, maskpixedge)] <- 1
+  newweights <- 1/(edgepix[edgepix>0] - 6)
+  offsets <- c(1, imdims[1], imdims[1]*imdims[2])
+  for (DIM in 1:3) {
+      offset <- offsets[DIM]
+
+      OK <- maskpixedgecoords[,DIM] != 1
+      tpix <- maskpixedge[OK]
+      ll[cbind(tpix, tpix - offset)] <- newweights[OK]
+
+      OK <- maskpixedgecoords[,DIM] != imdims[DIM]
+      tpix <- maskpixedge[OK]
+      ll[cbind(tpix, tpix + offset)] <- newweights[OK]
+  }
+  rm(maskpixedge, maskpixcoords, edgepix, maskpixedgecoords, tpix, maskpix, newweights)
+    
   b <- as.vector(imA)
   g<-solve(ll, b)
   g <- as.vector(g)
   dim(g) <- dim(imA)
-  #g$CopyInformation(im)
+  g <- as.image(g)
+  g$CopyInformation(im)
   return(g)
 }
 
+speedimage <- function(disttransfile) {
+    ## Normally we wouldn't be calling garbage collection
+    ## all the time, but better safe than sorry
+    dt <- ReadImage(disttransfile, "sitkFloat32")
+    wth <- WhiteTopHat(dt)
+    ## wth is a greyscale image. We want to preserve
+    ## internal structure. Careful to use Euclidean distances
+    ## in the DT so that the tophat output doesn't depend on
+    ## structure size. (Differences between adjacent pixels will
+    ## be bigger for bigger vessels if we work with squared distances
+    ## Now we want to interpolate between the background mask and the nonzero
+    ## wth to generate a speed function that can be reliably scaled to 0-1 range.
 
-function() {
-ct<-ReadImage("cthead1.png", 'sitkUInt8')
-#m <- ReadImage("ctmask.nii.gz", 'sitkUInt8')
-#m <- m[,,1,drop=TRUE]
-#WriteImage(m, "ctmask.png")
-m<-ReadImage("ctmask.png", 'sitkUInt8')
+    ## attempt 1 - multiply wth by 1e5
+    wth <- wth * 1e5
 
-p<-regionfill(ct,m)
-WriteImage(Cast(p, 'sitkUInt8'), "filled.png")
-ctcrop <- ct[,100:200]
-mcrop <- m[,100:200]
-
-pcrop <- regionfill(ctcrop,mcrop)
-WriteImage(Cast(pcrop, 'sitkUInt8'), "filledcrop.png")
-
-## Test creating a field
-## One rectangle inside a circle
-
-blank <- ct*0
-blank$SetPixel(c(128,128), 1)
-dt <- DanielssonDistanceMap(blank)
-
-outside <- 100*(dt > 80)
-
-inside <- ct*0
-inside$SetPixel(c(128,128), 1)
-inside <- BinaryDilate(inside, vectorRadius=c(50, 20), kernel='sitkBox')
-walls <- inside+outside
-WriteImage(walls, "walls.nii.gz")
-
-g<- regionfill(walls, walls==0)
-WriteImage(g, "field.nii.gz")
+    ## Outside vessels will be set to 0
+    interpmask <- (wth == 0) & (dt > 0)
+    rm(dt)
+    gc()
+    interp <- regionfill3D(wth, interpmask)
+    return(interp)
 }
 
 function() {
-    mni <- oro.nifti::readNIfTI("mnimasked.nii.gz")
-    msk <- oro.nifti::readNIfTI("mnimasked_mask.nii.gz")
+    dt <- ReadImage("s02_sub_dt.mha", "sitkFloat32")
 
-    mf <- regionfill3D(img_data(mni), img_data(msk))
+    s <- speedimage("s02_sub_dt.mha")
+    WriteImages(s, "s02_interp.mha")
+    
+    # White top hat
 
-    mnifilled <- mni
-    img_data(mnifilled) <- mf
-    oro.nifti::writeNIfTI(mnifilled, "filled.nii.gz")
+    wth <- WhiteTopHat(dt)
+    #wth <- wth > 0
+
+    wtha <- as.array(wth)
+    wtha <- wtha[wtha > 0]
+    hist(wtha, 50)
+    
+    gc()
+    WriteImage(wth, "wth.mha")
 }
