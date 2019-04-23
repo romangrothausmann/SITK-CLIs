@@ -1,0 +1,55 @@
+################################################################################
+# base system
+################################################################################
+FROM ubuntu:18.04 as system
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3
+
+################################################################################
+# builder
+################################################################################
+FROM system as builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    ca-certificates `# essential for git over https` \
+    cmake \
+    build-essential \
+    python3-dev
+
+### SITK
+RUN git clone -b v1.2.0 --depth 1 https://github.com/InsightSoftwareConsortium/SimpleITK
+
+RUN mkdir -p SITK_build && \
+    cd SITK_build && \
+    cmake \
+    	  -DCMAKE_INSTALL_PREFIX=/opt/sitk/ \
+	  -DCMAKE_BUILD_TYPE=Release \
+	  -DBUILD_TESTING=OFF \
+	  -DBUILD_SHARED_LIBS=OFF \
+	  -DITK_USE_SYSTEM_LIBRARIES=OFF \
+    	  -DWRAP_CSHARP=OFF \
+	  -DWRAP_LUA=OFF \
+	  -DWRAP_PYTHON=ON \
+	  -DWRAP_JAVA=OFF \
+	  -DWRAP_TCL=OFF \
+	  -DWRAP_R=OFF \
+	  -DWRAP_RUBY=OFF \
+	  ../SimpleITK/SuperBuild && \
+    make -j"$(nproc)" && \
+    cd SimpleITK-build/Wrapping/Python && \
+    python3 Packaging/setup.py install
+
+
+################################################################################
+# install
+################################################################################
+FROM system as install
+
+COPY --from=builder /opt/sitk/ /opt/sitk/
+COPY . /opt/SITK-CLIs/
+
+ENV PYTHONPATH "${PYTHONPATH}:/opt/sitk/lib/python/"
+
+WORKDIR /data
