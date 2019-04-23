@@ -38,8 +38,8 @@ RUN mkdir -p SITK_build && \
 	  -DWRAP_RUBY=OFF \
 	  ../SimpleITK/SuperBuild && \
     make -j"$(nproc)" && \
-    cd SimpleITK-build/Wrapping/Python && \
-    python3 Packaging/setup.py install
+    cd SimpleITK-build/Wrapping/Python `# essential for py install ` && \
+    python3 Packaging/setup.py install --home /opt/sitk/
 
 
 ################################################################################
@@ -48,8 +48,9 @@ RUN mkdir -p SITK_build && \
 FROM system as install
 
 COPY --from=builder /opt/sitk/ /opt/sitk/
-COPY . /opt/SITK-CLIs/
-
 ENV PYTHONPATH "${PYTHONPATH}:/opt/sitk/lib/python/"
 
-WORKDIR /data
+COPY . /opt/SITK-CLIs/
+ENV PATH "/opt/SITK-CLIs/:${PATH}"
+
+WORKDIR /images

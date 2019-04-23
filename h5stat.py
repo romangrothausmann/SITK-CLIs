@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 ## python script to create stats of hdf5-file image content
 
 
