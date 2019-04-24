@@ -47,6 +47,9 @@ RUN mkdir -p SITK_build && \
 ################################################################################
 FROM system as install
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-numpy python3-h5py
+
 COPY --from=builder /opt/sitk/ /opt/sitk/
 ENV PYTHONPATH "${PYTHONPATH}:/opt/sitk/lib/python/"
 
