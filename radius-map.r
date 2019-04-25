@@ -93,11 +93,17 @@ speedimage <- function(disttransfile) {
     return(interp)
 }
 
-function() {
-    dt <- ReadImage("s02_sub_dt.mha", "sitkFloat32")
+main <- function() {
+    args <- commandArgs(TRUE)
+    if(length(args) != 3)
+    	{
+  	stop("Missing Parameters: <binary-input> <seed-output> <wth-output>")
+	}
 
-    s <- speedimage("s02_sub_dt.mha")
-    WriteImages(s, "s02_interp.mha")
+    dt <- ReadImage(args[1], "sitkFloat32")
+
+    s <- speedimage(args[1])
+    WriteImages(s, args[2])
     
     # White top hat
 
@@ -109,5 +115,7 @@ function() {
     hist(wtha, 50)
     
     gc()
-    WriteImage(wth, "wth.mha")
+    WriteImage(wth, args[3])
 }
+
+main()

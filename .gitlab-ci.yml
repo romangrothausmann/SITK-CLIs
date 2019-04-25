@@ -77,6 +77,9 @@ h5stat.py:
   variables:
     CMD: " $CI_JOB_NAME tests/data/h3d_ROI-v0-wPS_0000.h5 "
 
+radius-map.r:
+  <<: *test00
+
 release:
   stage: release
   variables:
