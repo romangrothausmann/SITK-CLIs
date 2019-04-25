@@ -97,7 +97,7 @@ main <- function() {
     args <- commandArgs(TRUE)
     if(length(args) != 3)
     	{
-  	stop("Missing Parameters: <binary-input> <seed-output> <wth-output>")
+  	stop("Missing Parameters: <binary-input> <speed-output>")
 	}
     s <- speedimage(args[1])
     WriteImages(s, args[2])
