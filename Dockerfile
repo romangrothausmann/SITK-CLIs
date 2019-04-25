@@ -43,7 +43,7 @@ RUN cd SITK_build/SimpleITK-build/Wrapping/Python `# essential for py install ` 
     python3 Packaging/setup.py install --home /opt/sitk/
 
 RUN cd SITK_build/SimpleITK-build/Wrapping/R/Packaging && \
-    R CMD INSTALL SimpleITK
+    R CMD INSTALL -l /opt/sitk/ SimpleITK
 
 
 
@@ -57,6 +57,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /opt/sitk/ /opt/sitk/
 ENV PYTHONPATH "${PYTHONPATH}:/opt/sitk/lib/python/"
+ENV R_LIBS "${R_LIBS}:/opt/sitk/"
 
 COPY . /opt/SITK-CLIs/
 ENV PATH "/opt/SITK-CLIs/:${PATH}"
