@@ -1,3 +1,5 @@
+#!/usr/bin/Rscript
+
 ## R code - original version used SimpleITK
 ## 3d version below is using oro.nifti to load the test data.
 
