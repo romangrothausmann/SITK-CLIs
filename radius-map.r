@@ -97,25 +97,10 @@ main <- function() {
     args <- commandArgs(TRUE)
     if(length(args) != 3)
     	{
-  	stop("Missing Parameters: <binary-input> <seed-output> <wth-output>")
+  	stop("Missing Parameters: <binary-input> <speed-output>")
 	}
-
-    dt <- ReadImage(args[1], "sitkFloat32")
-
     s <- speedimage(args[1])
     WriteImages(s, args[2])
-    
-    # White top hat
-
-    wth <- WhiteTopHat(dt)
-    #wth <- wth > 0
-
-    wtha <- as.array(wth)
-    wtha <- wtha[wtha > 0]
-    hist(wtha, 50)
-    
-    gc()
-    WriteImage(wth, args[3])
 }
 
 main()
