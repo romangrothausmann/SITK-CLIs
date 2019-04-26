@@ -100,7 +100,7 @@ main <- function() {
   	stop("Missing Parameters: <binary-input> <speed-output>")
 	}
     s <- speedimage(args[1])
-    WriteImages(s, args[2])
+    WriteImage(s, args[2])
 }
 
 main()
