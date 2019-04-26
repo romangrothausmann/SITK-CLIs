@@ -64,6 +64,9 @@ build:
 
 .test: &test
   stage: test
+  artifacts:
+    untracked: true
+    expire_in: 1 week
   script:
     - docker pull $IMAGE_TAG:test
     - echo $CMD
