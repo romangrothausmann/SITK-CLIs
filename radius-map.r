@@ -97,22 +97,12 @@ speedimage <- function(disttransfile) {
 
 main <- function() {
     args <- commandArgs(TRUE)
-    if(length(args) != 5)
+    if(length(args) != 2)
     	{
-  	stop("Missing Parameters: <binary-input> <mnimasked> <lrmask> <seed-output> <regionfill3DB-output>")
+  	stop("Missing Parameters: <binary-input> <speed-output>")
 	}
-
-    dt <- ReadImage(args[1], "sitkFloat32")
-
-    system.time( s <- speedimage(args[1]))
-    WriteImage(s, args[4])
-    
-
-    mni <- ReadImage(args[2])
-    msk <- ReadImage(args[3], "sitkUInt8")
-
-    WriteImage(regionfill3DB(mni, msk), args[5])
-    
+    s <- speedimage(args[1])
+    WriteImage(s, args[2])
 }
 
 main()
