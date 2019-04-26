@@ -64,6 +64,8 @@ build:
 
 .test: &test
   stage: test
+  tags:
+    - multicore
   artifacts:
     untracked: true
     expire_in: 1 week
@@ -73,7 +75,7 @@ build:
     - docker run --rm
                  -v $(pwd):/images
                  $IMAGE_TAG:test
-                 /bin/bash -c "$CMD"
+                 /bin/bash -c " time $CMD "
     - set +o pipefail # essential if return-value of pipe is used to determine job status
     - 'echo "Expected MD5: $MD5"'
     - '[[ -z $MD5 ]] &&  echo "No MD5 provided" || md5sum output.mha | tee /dev/stderr | grep $MD5'
