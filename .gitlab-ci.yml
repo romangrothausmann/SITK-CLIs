@@ -64,18 +64,31 @@ build:
 
 .test: &test
   stage: test
+  artifacts:
+    untracked: true
+    expire_in: 1 week
   script:
     - docker pull $IMAGE_TAG:test
+    - echo $CMD
     - docker run --rm
                  -v $(pwd):/images
                  $IMAGE_TAG:test
-                 $CMD
+                 /bin/bash -c "$CMD"
+    - set +o pipefail # essential if return-value of pipe is used to determine job status
+    - 'echo "Expected MD5: $MD5"'
+    - '[[ -z $MD5 ]] &&  echo "No MD5 provided" || md5sum output.mha | tee /dev/stderr | grep $MD5'
   retry: 2
 
 h5stat.py:
   <<: *test
   variables:
     CMD: " $CI_JOB_NAME tests/data/h3d_ROI-v0-wPS_0000.h5 "
+
+radius-map.r:
+  <<: *test
+  variables:
+    CMD: " $CI_JOB_NAME tests/data/ACN_rs+1.mha output.mha "
+    MD5: 345b1d613c2a4dfb464dc57fc066dbc2
 
 release:
   stage: release

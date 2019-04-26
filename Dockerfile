@@ -4,7 +4,7 @@
 FROM ubuntu:18.04 as system
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3
+    python3 r-base
 
 ################################################################################
 # builder
@@ -34,12 +34,17 @@ RUN mkdir -p SITK_build && \
 	  -DWRAP_PYTHON=ON \
 	  -DWRAP_JAVA=OFF \
 	  -DWRAP_TCL=OFF \
-	  -DWRAP_R=OFF \
+	  -DWRAP_R=ON \
 	  -DWRAP_RUBY=OFF \
 	  ../SimpleITK/SuperBuild && \
-    make -j"$(nproc)" && \
-    cd SimpleITK-build/Wrapping/Python `# essential for py install ` && \
+    make -j"$(nproc)"
+
+RUN cd SITK_build/SimpleITK-build/Wrapping/Python `# essential for py install ` && \
     python3 Packaging/setup.py install --home /opt/sitk/
+
+RUN cd SITK_build/SimpleITK-build/Wrapping/R/Packaging && \
+    R CMD INSTALL -l /opt/sitk/ SimpleITK
+
 
 
 ################################################################################
@@ -52,6 +57,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /opt/sitk/ /opt/sitk/
 ENV PYTHONPATH "${PYTHONPATH}:/opt/sitk/lib/python/"
+ENV R_LIBS "${R_LIBS}:/opt/sitk/"
 
 COPY . /opt/SITK-CLIs/
 ENV PATH "/opt/SITK-CLIs/:${PATH}"

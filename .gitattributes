@@ -1,2 +1,4 @@
 ## build in pattern https://git-scm.com/docs/gitattributes/#_defining_a_custom_hunk_header
+## defined in https://git.kernel.org/pub/scm/git/git.git/tree/userdiff.c
 *.py      diff=python
+*.r       diff=rstats
