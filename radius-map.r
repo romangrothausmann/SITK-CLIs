@@ -58,7 +58,7 @@ regionfill3D <- function(im, regmask)
       tpix <- maskpixedge[OK]
       ll[cbind(tpix, tpix + offset)] <- newweights[OK]
   }
-  rm(maskpixedge, maskpixcoords, edgepix, maskpixedgecoords, tpix, maskpix, newweights)
+  rm(maskpixedge, edgepix, maskpixedgecoords, tpix, maskpix, newweights)
     
   b <- as.vector(imA)
   g<-solve(ll, b)
