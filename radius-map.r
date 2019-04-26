@@ -95,7 +95,7 @@ speedimage <- function(disttransfile) {
 
 main <- function() {
     args <- commandArgs(TRUE)
-    if(length(args) != 3)
+    if(length(args) != 2)
     	{
   	stop("Missing Parameters: <binary-input> <speed-output>")
 	}
