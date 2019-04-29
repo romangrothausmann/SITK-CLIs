@@ -5,16 +5,29 @@ library(Matrix)
 
 regionfill3D <- function(im, regmask)
 {
+  ## More efficient version that only holds the interpolation
+  ## area and boundaries. Means that setting up the neighbourhood is much
+  ## trickier.
   imA <- as.array(im)
+  ## Create a mask of pixels around regmask - we only
+  ## need those ones, not the entire image
+  boundarymaskIm <- BinaryDilate(regmask) - regmask
   regmask <- as.array(regmask)
   storage.mode(regmask)<-"logical"
-  imdims <- dim(imA)
-  vv <- prod(imdims)
-  ll <- Matrix(0, nrow=vv, ncol=vv, sparse=TRUE)
-  
-  allmaskpix <- which(regmask)
-  nonmaskpix <- which(!regmask)
 
+  boundarymask <- as.array(boundarymaskIm)
+  storage.mode(boundarymask) <- "logical"
+    
+  imdims <- dim(imA)
+
+  ## All these indexes refer to image position
+  allmaskpix <- which(regmask)
+  nonmaskpix <- which(boundarymask)
+
+  allpix <- sort(unique(c(allmaskpix, nonmaskpix)))
+
+  matsize <- length(allpix)
+  
   maskpixcoords <- arrayInd(allmaskpix, .dim=dim(regmask))
 
   edgepix <- (maskpixcoords[,1] == 1) +
@@ -24,47 +37,36 @@ regionfill3D <- function(im, regmask)
       (maskpixcoords[,2] == imdims[2]) +
       (maskpixcoords[,3] == imdims[3]) 
 
-  maskpix <- allmaskpix[edgepix==0]
-
-  maskpixedge <- allmaskpix[edgepix > 0]
-  maskpixedgecoords <- maskpixcoords[edgepix > 0, ]
-
-  rm(maskpixcoords)
-  rm(allmaskpix)
-  ll[cbind(maskpix, maskpix)] <- 1
-  ll[cbind(nonmaskpix,nonmaskpix)] <- 1
-  ## set up the ones that aren't edges
-  ll[cbind(maskpix, maskpix+1)] <- -1/6
-  ll[cbind(maskpix, maskpix-1)] <- -1/6
-  ll[cbind(maskpix, maskpix+nrow(imA))] <- -1/6
-  ll[cbind(maskpix, maskpix-nrow(imA))] <- -1/6
-  ll[cbind(maskpix, maskpix+(nrow(imA)*ncol(imA)))] <- -1/6
-  ll[cbind(maskpix, maskpix-(nrow(imA)*ncol(imA)))] <- -1/6
-
-  ## deal with the edge effects
-  ## can be dealing with up to 3 missing neighbours (for a corner).
-  ## is there a nice vectorized way to do this
-  ll[cbind(maskpixedge, maskpixedge)] <- 1
-  newweights <- 1/(edgepix[edgepix>0] - 6)
-  offsets <- c(1, imdims[1], imdims[1]*imdims[2])
-  for (DIM in 1:3) {
-      offset <- offsets[DIM]
-
-      OK <- maskpixedgecoords[,DIM] != 1
-      tpix <- maskpixedge[OK]
-      ll[cbind(tpix, tpix - offset)] <- newweights[OK]
-
-      OK <- maskpixedgecoords[,DIM] != imdims[DIM]
-      tpix <- maskpixedge[OK]
-      ll[cbind(tpix, tpix + offset)] <- newweights[OK]
-  }
-  rm(maskpixedge, edgepix, maskpixedgecoords, tpix, maskpix, newweights)
+  weights <- 1/(edgepix - 2*length(imdims))
     
-  b <- as.vector(imA)
+  ll <- Matrix(0, nrow=matsize, ncol=matsize, sparse=TRUE)
+
+  idx <- match(nonmaskpix, allpix)
+  ll[cbind(idx,idx)] <- 1
+  idx <- match(allmaskpix, allpix)
+  ll[cbind(idx, idx)] <- 1
+
+  offsets <- c(1, imdims[1], imdims[1]*imdims[2])
+
+ 
+  for (DIM in 1:length(imdims)) {
+      offset <- offsets[DIM]
+          
+      OK <- maskpixcoords[,DIM] != 1
+      tpix <- allmaskpix[OK]
+      
+      ll[cbind(match(tpix,allpix),
+               match(tpix - offset, allpix))] <- weights[OK]
+      
+      OK <- maskpixcoords[,DIM] != imdims[DIM]
+      tpix <- allmaskpix[OK]
+      ll[cbind(match(tpix, allpix),
+               match(tpix + offset, allpix))] <- weights[OK]
+  }
+  b <- as.vector(imA[allpix])
   g<-solve(ll, b)
-  g <- as.vector(g)
-  dim(g) <- dim(imA)
-  g <- as.image(g)
+  imA[allpix] <- as.vector(g)
+  g <- as.image(imA)
   g$CopyInformation(im)
   return(g)
 }
