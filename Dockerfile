@@ -63,3 +63,10 @@ COPY . /opt/SITK-CLIs/
 ENV PATH "/opt/SITK-CLIs/:${PATH}"
 
 WORKDIR /images
+
+ENV USERNAME diUser
+RUN useradd -m $USERNAME && \
+    echo "$USERNAME:$USERNAME" | chpasswd && \
+    usermod --shell /bin/bash $USERNAME
+
+USER $USERNAME
