@@ -50,6 +50,7 @@ simplespeedimage <- function(disttransfile, resultfile, bglevel=0.005, sigma=-1)
        sigma <- min(sp)
     }
     wth <- SmoothingRecursiveGaussian(wth, sigma)
+    # Mask by nonzero parts of DistTrans
     wth <- Mask(wth, vessels)
 
     ## Recompute the statistics
@@ -57,8 +58,6 @@ simplespeedimage <- function(disttransfile, resultfile, bglevel=0.005, sigma=-1)
    
     SMX <- St$GetMaximum()
     wth <- wth/SMX
-    # Mask by nonzero parts of DistTrans
-    wth <- Mask(wth, vessels)
     WriteImage(wth, resultfile)
     invisible(NULL)
 }
