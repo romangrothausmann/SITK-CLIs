@@ -92,6 +92,12 @@ radius-map.r:
     CMD: " $CI_JOB_NAME tests/data/ACN_rs+1.mha output.mha "
     MD5: 345b1d613c2a4dfb464dc57fc066dbc2
 
+tophat-speed.r:
+  <<: *test
+  variables:
+    CMD: " $CI_JOB_NAME tests/data/ACN_speed.mhd output.mha "
+    MD5: 9f0b98715bb318f1be38bfdcea625184
+
 release:
   stage: release
   variables:
